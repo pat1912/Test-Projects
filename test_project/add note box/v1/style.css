@@ -1,0 +1,174 @@
+/* --- START OF FILE style.css --- */
+
+:root {
+    /* --- Light Blue Color Scheme --- */
+    --primary-color: #007bff; /* Standard Bootstrap Blue */
+    --primary-hover-color: #0056b3; /* Darker Blue */
+    --primary-focus-glow: rgba(0, 123, 255, 0.25);
+    --button-disabled-bg: #e9ecef; /* Light Gray for disabled */
+    --button-disabled-color: #adb5bd; /* Muted Gray text */
+
+    /* Other variables */
+    --border-color: #dee2e6; /* Standard light border */
+    --input-border-color: #e0e0e0; /* Lighter input border */
+    --very-tiny-border: 1px solid var(--input-border-color); /* Thinner border */
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: #f8f9fa;
+    padding: 30px;
+    color: #333;
+}
+
+/* Language Selector Styles (Optional) */
+.lang-selector {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.lang-btn {
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    background-color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+.lang-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+.lang-btn:not(.active):hover {
+    background-color: #f1f1f1;
+}
+
+
+h1, h2 {
+    text-align: center;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+/* --- The Enhanced Input Component --- */
+.enhanced-input-container {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto 40px auto;
+}
+
+#note-textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 50px; /* Pill shape */
+    /* --- Use the very tiny border --- */
+    border: var(--very-tiny-border);
+    padding: 10px 55px 10px 20px; /* Adjusted padding for thinner look */
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.5;
+    background-color: #fff;
+    color: #212529;
+    resize: none;
+    overflow: hidden;
+    min-height: 42px; /* Adjust min height based on padding */
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); /* Slightly reduced shadow */
+}
+
+#note-textarea:focus {
+    outline: none;
+    /* --- Update focus color --- */
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem var(--primary-focus-glow);
+}
+
+#note-textarea::placeholder {
+    color: #6c757d;
+    opacity: 1;
+}
+
+#submit-note-btn {
+    position: absolute;
+    right: 5px; /* Position inside padding */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px; /* Slightly smaller button */
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    /* --- Default Enabled State (Light Blue) --- */
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem; /* Slightly smaller icon */
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Disabled State Styling --- */
+#submit-note-btn:disabled {
+    background-color: var(--button-disabled-bg);
+    color: var(--button-disabled-color);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* --- Hover only if NOT disabled --- */
+#submit-note-btn:not(:disabled):hover {
+    background-color: var(--primary-hover-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+#submit-note-btn:not(:disabled):active {
+     background-color: var(--primary-hover-color); /* Keep hover color or slightly darker */
+     box-shadow: none;
+     transform: translateY(-50%) scale(0.97); /* Adjusted press effect */
+}
+
+
+/* --- Example Output List --- */
+#submitted-notes-list {
+    list-style: none;
+    padding: 0;
+    max-width: 600px;
+    margin: 20px auto;
+    background-color: #fff;
+    border-radius: 8px;
+    border: 1px solid #eee; /* Add a subtle border to the list container */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+#submitted-notes-list li {
+    padding: 12px 20px; /* Slightly reduced padding */
+    border-bottom: 1px solid #f1f1f1; /* Lighter separator */
+    /* dir="auto" in JS handles text direction */
+}
+
+#submitted-notes-list li:first-child {
+     border-top-left-radius: 8px;
+     border-top-right-radius: 8px;
+}
+
+#submitted-notes-list li:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* RTL adjustments */
+body[dir="rtl"] #note-textarea {
+    padding: 10px 20px 10px 55px; /* Swap left/right padding */
+}
+body[dir="rtl"] #submit-note-btn {
+    right: auto; /* Remove right positioning */
+    left: 5px;   /* Position on the left */
+}
+
+/* --- END OF FILE style.css --- */

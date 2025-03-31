@@ -1,0 +1,462 @@
+--- START OF FILE index.html ---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes Application</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Main App Container -->
+    <div class="container">
+        <header>
+            <h1 class="task-title"></h1>
+            <div class="language-selector">
+                <button class="lang-btn" data-lang="en">English</button>
+                <button class="lang-btn" data-lang="he">עברית</button>
+            </div>
+        </header>
+
+        <button class="delete-selected-btn">
+             <i class="fas fa-trash"></i> <span class="btn-text">Delete Selected</span>
+        </button>
+
+        <div class="notes-container">
+            <!-- Notes will be dynamically added here -->
+        </div>
+
+        <div class="input-area">
+            <input type="text" class="note-input" placeholder="" dir="auto">
+            <button class="add-note-btn">
+                <i class="fas fa-plus"></i> <span class="btn-text">Add Note</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Translations for English and Hebrew
+        const translations = {
+            en: {
+                taskTitle: "Notes for Building a Table for the Office",
+                addNote: "Add Note",
+                edit: "Edit",
+                delete: "Delete",
+                save: "Save",
+                placeholder: "Write a new note...",
+                deleteSelected: "Delete Selected",
+                confirmDelete: "Are you sure you want to delete this note?",
+                confirmDeleteSelected: "Are you sure you want to delete {count} selected note(s)?",
+                editConflict: "Please save or cancel the other note first.",
+                emptyNoteError: "Note cannot be empty."
+            },
+            he: {
+                taskTitle: "הערות לבניית שולחן למשרד",
+                addNote: "הוסף הערה",
+                edit: "ערוך",
+                delete: "מחק",
+                save: "שמור",
+                placeholder: "כתוב הערה חדשה...",
+                deleteSelected: "מחק נבחרים",
+                confirmDelete: "האם אתה בטוח שברצונך למחוק הערה זו?",
+                confirmDeleteSelected: "האם אתה בטוח שברצונך למחוק {count} הערות נבחרות?",
+                editConflict: "אנא שמור או בטל את עריכת ההערה השנייה תחילה.",
+                emptyNoteError: "הערה אינה יכולה להיות ריקה."
+            }
+        };
+
+        // DOM elements
+        const container = document.querySelector('.container');
+        const taskTitle = document.querySelector('.task-title');
+        const noteInput = document.querySelector('.note-input');
+        const addNoteBtn = document.querySelector('.add-note-btn');
+        const addNoteBtnText = addNoteBtn.querySelector('.btn-text');
+        const notesContainer = document.querySelector('.notes-container');
+        const langBtns = document.querySelectorAll('.lang-btn');
+        const deleteSelectedBtn = document.querySelector('.delete-selected-btn');
+        const deleteSelectedBtnText = deleteSelectedBtn.querySelector('.btn-text');
+
+        // --- State Initialization ---
+        let currentLang = localStorage.getItem('lang') || 'en';
+        let notes = JSON.parse(localStorage.getItem('notes')) || [];
+        let nextId = parseInt(localStorage.getItem('nextId')) || 1;
+        let selectedNotes = new Set(); // Initialize selectedNotes HERE
+
+        // --- Initial Setup ---
+        document.documentElement.lang = currentLang;
+        document.body.dir = currentLang === 'he' ? 'rtl' : 'ltr';
+        updateStaticTexts(); // Set initial text based on language
+        updateActiveLangButton(); // Highlight active language button
+
+        // Display existing notes (sorted newest first)
+        notes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        notes.forEach(note => notesContainer.appendChild(createNoteElement(note)));
+        updateDeleteSelectedButton(); // Set initial state of delete button
+
+        // --- Functions ---
+
+        // Format timestamp based on language
+        function formatTimestamp(timestamp, lang) {
+            const date = new Date(timestamp);
+            const options = {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: 'numeric', minute: '2-digit', hour12: true
+            };
+            const locale = lang === 'he' ? 'he-IL' : 'en-US';
+            try {
+                 return new Intl.DateTimeFormat(locale, options).format(date);
+            } catch (e) {
+                console.error("Error formatting date for locale:", locale, e);
+                return new Intl.DateTimeFormat('en-US', options).format(date); // Fallback
+            }
+        }
+
+        // Create a note element
+        function createNoteElement(note) {
+            const noteDiv = document.createElement('div');
+            noteDiv.classList.add('note');
+            noteDiv.setAttribute('data-id', note.id);
+            // Use translation object directly here for initial button text/labels
+            const currentTranslations = translations[currentLang];
+
+            noteDiv.innerHTML = `
+                <div class="note-selection">
+                    <input type="checkbox" class="note-checkbox" id="note-check-${note.id}">
+                    <label for="note-check-${note.id}" class="sr-only">Select note ${note.id}</label>
+                </div>
+                <div class="note-content">
+                    <div class="note-text" dir="auto">${escapeHTML(note.text)}</div>
+                    <div class="note-meta">
+                        <span class="note-timestamp" data-timestamp="${note.timestamp}">
+                            ${formatTimestamp(note.timestamp, currentLang)}
+                        </span>
+                        <div class="note-actions">
+                            <button class="edit-btn" aria-label="${currentTranslations.edit}">
+                                <i class="fas fa-edit"></i> <span class="action-text">${currentTranslations.edit}</span>
+                            </button>
+                            <button class="delete-btn" aria-label="${currentTranslations.delete}">
+                                <i class="fas fa-trash"></i> <span class="action-text">${currentTranslations.delete}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Check if this note was selected (safe now as selectedNotes is initialized)
+            if (selectedNotes.has(note.id)) {
+                noteDiv.querySelector('.note-checkbox').checked = true;
+                noteDiv.classList.add('selected'); // Add class on initial render too
+            }
+            return noteDiv;
+        }
+
+        // Helper to prevent basic XSS from note text
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+
+        // Update all static texts and notes based on current language
+        function updateStaticTexts() {
+            const currentTranslations = translations[currentLang];
+            taskTitle.textContent = currentTranslations.taskTitle;
+            addNoteBtnText.textContent = currentTranslations.addNote;
+            noteInput.placeholder = currentTranslations.placeholder;
+            deleteSelectedBtnText.textContent = currentTranslations.deleteSelected; // Base text
+            // Update aria-labels
+            addNoteBtn.setAttribute('aria-label', currentTranslations.addNote);
+            deleteSelectedBtn.setAttribute('aria-label', currentTranslations.deleteSelected);
+            updateNotesLanguage(); // Update text within existing notes
+            updateDeleteSelectedButton(); // Update count display if visible
+        }
+
+        // Update language-specific elements in existing notes
+        function updateNotesLanguage() {
+            const currentTranslations = translations[currentLang];
+            document.querySelectorAll('.note').forEach(noteEl => {
+                const id = parseInt(noteEl.getAttribute('data-id'));
+                const note = notes.find(n => n.id === id);
+                if (note) {
+                    // Update timestamp format
+                    const timestampEl = noteEl.querySelector('.note-timestamp');
+                    timestampEl.textContent = formatTimestamp(note.timestamp, currentLang);
+
+                    // Update Edit Button
+                    const editBtn = noteEl.querySelector('.edit-btn');
+                    const editBtnText = editBtn?.querySelector('.action-text');
+                    if (editBtnText) {
+                        editBtnText.textContent = currentTranslations.edit;
+                        editBtn.setAttribute('aria-label', currentTranslations.edit);
+                    }
+
+                    // Update Delete Button
+                    const deleteBtn = noteEl.querySelector('.delete-btn');
+                     const deleteBtnText = deleteBtn?.querySelector('.action-text');
+                    if (deleteBtnText) {
+                        deleteBtnText.textContent = currentTranslations.delete;
+                        deleteBtn.setAttribute('aria-label', currentTranslations.delete);
+                    }
+
+                    // Update Save Button (if currently editing)
+                    const saveBtn = noteEl.querySelector('.save-btn');
+                     const saveBtnText = saveBtn?.querySelector('.action-text');
+                    if (saveBtnText) {
+                        saveBtnText.textContent = currentTranslations.save;
+                        saveBtn.setAttribute('aria-label', currentTranslations.save);
+                    }
+                }
+            });
+        }
+
+        // Save notes and nextId to localStorage
+        function saveNotes() {
+            localStorage.setItem('notes', JSON.stringify(notes));
+            localStorage.setItem('nextId', nextId.toString());
+        }
+
+        // Add a new note
+        // --- Updated function below ---
+        function handleAddNote() {
+             const text = noteInput.value.trim();
+             console.log('handleAddNote triggered. Text:', text); // Add this for debugging
+
+             if (text) {
+                 const note = {
+                     id: nextId++,
+                     text: text,
+                     timestamp: new Date().toISOString()
+                 };
+                 notes.unshift(note); // Add to start of array
+                 saveNotes();
+
+                 try { // Add try-catch around DOM manipulation
+                     const noteEl = createNoteElement(note);
+                     notesContainer.prepend(noteEl); // Add element to top of container
+
+                     // --- Ensure the new note is visible by scrolling to the top ---
+                     notesContainer.scrollTop = 0;
+                     // --- End of visibility fix ---
+
+                     noteInput.value = ''; // Clear input only on success
+                     noteInput.focus();
+                     console.log('Note added successfully.'); // Success log
+
+                 } catch (error) {
+                     console.error("Error adding note element to DOM:", error);
+                     // Optional: If DOM fails, maybe remove from 'notes' array?
+                     // notes.shift(); // Remove the note we tried to add
+                     // saveNotes();
+                 }
+
+             } else {
+                 console.log('Note text was empty. No note added.');
+                 // Optional: Give user feedback?
+                 // noteInput.focus();
+                 // alert("Please enter some text for the note.");
+             }
+        }
+        // --- End of updated function ---
+
+        // Add listener to the button
+        addNoteBtn.addEventListener('click', handleAddNote);
+
+
+        // Handle clicks within the notes container (delegation)
+        notesContainer.addEventListener('click', (e) => {
+            const noteEl = e.target.closest('.note');
+            if (!noteEl) return; // Click wasn't inside a note
+
+            const id = parseInt(noteEl.getAttribute('data-id'));
+            const note = notes.find(note => note.id === id);
+            if (!note) return;
+
+            const noteContentDiv = noteEl.querySelector('.note-content');
+            const textEl = noteEl.querySelector('.note-text');
+            const metaEl = noteEl.querySelector('.note-meta');
+
+            // --- DELETE ---
+            if (e.target.closest('.delete-btn')) {
+                if (!confirm(translations[currentLang].confirmDelete)) return;
+
+                notes = notes.filter(n => n.id !== id);
+                saveNotes();
+                noteEl.remove();
+                selectedNotes.delete(id); // Remove from selection if deleted
+                updateDeleteSelectedButton();
+            }
+            // --- START EDIT ---
+            else if (e.target.closest('.edit-btn')) {
+                // Prevent multiple edits at once
+                if (notesContainer.querySelector('.edit-input')) {
+                    alert(translations[currentLang].editConflict);
+                    return;
+                }
+
+                textEl.style.display = 'none'; // Hide static text
+                metaEl.style.display = 'none'; // Hide timestamp/actions
+
+                // Create textarea for editing
+                const input = document.createElement('textarea');
+                input.value = note.text; // Use original text
+                input.classList.add('edit-input');
+                input.setAttribute('dir', 'auto');
+                input.rows = 3; // Initial size
+
+                // Create Save button
+                const saveBtn = document.createElement('button');
+                saveBtn.classList.add('save-btn', 'action-btn-inline');
+                saveBtn.innerHTML = `<i class="fas fa-check"></i> <span class="action-text">${translations[currentLang].save}</span>`;
+                saveBtn.setAttribute('aria-label', translations[currentLang].save);
+
+                // Add elements to DOM
+                noteContentDiv.insertBefore(input, textEl); // Insert textarea before hidden text
+                noteContentDiv.appendChild(saveBtn); // Append save button
+
+                input.focus();
+                input.select(); // Select text
+            }
+            // --- SAVE EDIT ---
+            else if (e.target.closest('.save-btn')) {
+                 const input = noteEl.querySelector('.edit-input');
+                 const saveBtn = e.target.closest('.save-btn');
+                 const newText = input.value.trim();
+
+                 if (newText) {
+                     note.text = newText;
+                     // Decide if timestamp should update on edit
+                     // note.timestamp = new Date().toISOString();
+                     // If timestamp updated, you might need re-sorting:
+                     // notes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                     saveNotes();
+
+                     // Update UI
+                     textEl.textContent = escapeHTML(newText); // Update the static text element
+                     textEl.style.display = ''; // Show static text
+                     metaEl.style.display = ''; // Show timestamp/actions
+                     // If timestamp changed, update display:
+                     // noteEl.querySelector('.note-timestamp').textContent = formatTimestamp(note.timestamp, currentLang);
+
+                     // Remove edit controls
+                     input.remove();
+                     saveBtn.remove();
+
+                     // If sorting changed, full re-render might be simplest:
+                     // renderAllNotes();
+                 } else {
+                     alert(translations[currentLang].emptyNoteError);
+                     input.focus();
+                 }
+            }
+        });
+
+        // Handle checkbox changes for selection
+        notesContainer.addEventListener('change', (e) => {
+            if (e.target.classList.contains('note-checkbox')) {
+                const noteEl = e.target.closest('.note');
+                const id = parseInt(noteEl.getAttribute('data-id'));
+                if (e.target.checked) {
+                    selectedNotes.add(id);
+                    noteEl.classList.add('selected');
+                } else {
+                    selectedNotes.delete(id);
+                     noteEl.classList.remove('selected');
+                }
+                updateDeleteSelectedButton();
+            }
+        });
+
+        // Delete selected notes
+        deleteSelectedBtn.addEventListener('click', () => {
+            const count = selectedNotes.size;
+            if (count === 0) return;
+
+            const confirmMsg = translations[currentLang].confirmDeleteSelected.replace('{count}', count);
+             if (!confirm(confirmMsg)) {
+                 return;
+             }
+
+            notes = notes.filter(note => !selectedNotes.has(note.id));
+            saveNotes();
+            selectedNotes.forEach(id => {
+                const noteEl = notesContainer.querySelector(`.note[data-id="${id}"]`);
+                if (noteEl) noteEl.remove();
+            });
+            selectedNotes.clear();
+            updateDeleteSelectedButton();
+        });
+
+        // Show/hide "Delete Selected" button and update count
+        function updateDeleteSelectedButton() {
+            const count = selectedNotes.size;
+            const currentTranslations = translations[currentLang];
+            if (count > 0) {
+                deleteSelectedBtn.style.display = 'inline-flex';
+                deleteSelectedBtnText.textContent = `${currentTranslations.deleteSelected} (${count})`;
+                deleteSelectedBtn.setAttribute('aria-label', `${currentTranslations.deleteSelected} (${count})`);
+            } else {
+                deleteSelectedBtn.style.display = 'none';
+                deleteSelectedBtnText.textContent = currentTranslations.deleteSelected; // Reset base text
+                 deleteSelectedBtn.setAttribute('aria-label', currentTranslations.deleteSelected);
+            }
+        }
+
+        // Language selection button clicks
+        langBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLang = btn.getAttribute('data-lang');
+                localStorage.setItem('lang', currentLang);
+                document.documentElement.lang = currentLang;
+                document.body.dir = currentLang === 'he' ? 'rtl' : 'ltr';
+                updateStaticTexts(); // Update all text for new language
+                updateActiveLangButton(); // Update button highlight
+            });
+        });
+
+        // Highlight the active language button
+        function updateActiveLangButton() {
+             langBtns.forEach(btn => {
+                 btn.classList.toggle('active', btn.getAttribute('data-lang') === currentLang);
+             });
+        }
+
+        // Add note when Enter is pressed in the input field
+        noteInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { // Allow Shift+Enter in future textarea
+                e.preventDefault(); // Prevent default newline/submit
+                handleAddNote();
+            }
+        });
+
+        // Add sr-only class CSS rule for accessibility
+        const style = document.createElement('style');
+        style.textContent = `
+            .sr-only {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Helper function to re-render all notes (useful if sorting changes)
+        // function renderAllNotes() {
+        //      notesContainer.innerHTML = ''; // Clear current notes
+        //      notes.forEach(note => notesContainer.appendChild(createNoteElement(note)));
+        //      updateDeleteSelectedButton(); // Ensure delete button state is correct
+        // }
+
+    </script>
+</body>
+</html>
+
+--- END OF FILE index.html ---

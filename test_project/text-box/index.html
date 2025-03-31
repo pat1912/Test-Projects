@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilingual Text Input</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            direction: ltr;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .input-container {
+            margin-bottom: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            border-color: #4a90e2;
+            outline: none;
+        }
+        
+        .rtl {
+            direction: rtl;
+            text-align: right;
+        }
+        
+        .ltr {
+            direction: ltr;
+            text-align: left;
+        }
+        
+        .controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .language-indicator {
+            margin-left: auto;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .output {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        
+        .info-panel {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4a90e2;
+            padding: 15px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bilingual Text Input (Hebrew/English)</h1>
+
+    <div class="info-panel">
+        <p>This text input automatically detects if you're typing in Hebrew or English and adjusts text direction accordingly.</p>
+        <p>- Hebrew text will display right-to-left (RTL)</p>
+        <p>- English text will display left-to-right (LTR)</p>
+    </div>
+    
+    <div class="input-container">
+        <div class="controls">
+            <label for="bilingual-input">Start typing:</label>
+            <div class="language-indicator" id="language-display">Language: Auto-detect</div>
+        </div>
+        <textarea id="bilingual-input" placeholder="Type here in Hebrew or English..."></textarea>
+    </div>
+    
+    <div class="output" id="output-display"></div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const textInput = document.getElementById('bilingual-input');
+            const output = document.getElementById('output-display');
+            const languageDisplay = document.getElementById('language-display');
+            
+            // Function to detect if text contains Hebrew characters
+            function containsHebrew(text) {
+                const hebrewPattern = /[\u0590-\u05FF\uFB1D-\uFB4F]/;
+                return hebrewPattern.test(text);
+            }
+            
+            // Function to detect language and set direction
+            function detectLanguageAndSetDirection(text) {
+                if (!text) {
+                    languageDisplay.textContent = "Language: Auto-detect";
+                    textInput.className = "";
+                    output.className = "output";
+                    return;
+                }
+                
+                // Check first few characters to determine direction
+                const firstWords = text.trim().substring(0, Math.min(text.length, 10));
+                
+                if (containsHebrew(firstWords)) {
+                    textInput.className = "rtl";
+                    output.className = "output rtl";
+                    languageDisplay.textContent = "Language: Hebrew (RTL)";
+                } else {
+                    textInput.className = "ltr";
+                    output.className = "output ltr";
+                    languageDisplay.textContent = "Language: English (LTR)";
+                }
+                
+                // Update output content
+                output.textContent = text;
+            }
+            
+            // Event listener for input changes
+            textInput.addEventListener('input', function() {
+                detectLanguageAndSetDirection(this.value);
+            });
+            
+            // Ensure correct handling of paste events
+            textInput.addEventListener('paste', function() {
+                // Use setTimeout to get the text after paste completes
+                setTimeout(() => {
+                    detectLanguageAndSetDirection(textInput.value);
+                }, 0);
+            });
+        });
+    </script>
+</body>
+</html>

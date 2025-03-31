@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Manager with Subgroups</title>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --background-color: #f8f9fa;
+            --sidebar-color: #ffffff;
+            --text-color: #212529;
+            --hover-color: #e9ecef;
+            --border-color: #dee2e6;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-color);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .add-group-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-group-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .groups-container {
+            padding: 15px;
+            flex-grow: 1;
+        }
+
+        .group-item {
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s;
+            position: relative;
+        }
+
+        .group-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .group-item.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .group-name {
+            font-weight: 500;
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .expand-icon {
+            cursor: pointer;
+            margin-right: 8px;
+            font-size: 10px;
+            width: 12px;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .breadcrumb-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb-item {
+            margin-right: 5px;
+        }
+
+        .breadcrumb-item.active {
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .breadcrumb-item .separator {
+            margin-left: 5px;
+            color: #6c757d;
+        }
+
+        .subgroup-container {
+            margin-left: 15px;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6c757d;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .group-item:hover .menu-toggle {
+            display: flex;
+        }
+
+        .group-item.active .menu-toggle {
+            color: white;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            right: 10px;
+            top: 100%;
+            background-color: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            z-index: 20;
+            display: none;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            color: var(--text-color);
+            text-decoration: none;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .dropdown-item i {
+            width: 16px;
+            text-align: center;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .content-header h2 {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+        }
+
+        .add-link-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .add-link-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .links-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .link-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 15px;
+            position: relative;
+        }
+
+        .link-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .link-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .link-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background-color: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .link-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .link-icon-fallback {
+            width: 16px;
+            height: 16px;
+            color: #6c757d;
+        }
+
+        .link-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .link-url {
+            color: #6c757d;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .link-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6c757d;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .link-menu-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .link-card:hover .link-menu-toggle {
+            display: flex;
+        }
+
+        .link-dropdown-menu {
+            position: absolute;
+            right: 15px;
+            top: 40px;
+            background-color: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            z-index: 20;
+            display: none;
+        }
+
+        .link-dropdown-menu.show {
+            display: block;
+        }
+
+        .open-link {
+            display: block;
+            text-decoration: none;
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 8px 0;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .open-link:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: var(--primary-color);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .cancel-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .cancel-btn:hover {
+            background-color: #5a6268;
+        }
+
+        .save-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .save-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 0;
+            color: #6c757d;
+        }
+
+        .empty-state p {
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+            }
+
+            .main-content {
+                height: 60vh;
+            }
+        }
+		
+		
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>Link Manager</h1>
+            <div class="header-buttons">
+                <button class="add-group-btn" id="add-group-button">
+                    <i class="fas fa-plus"></i> Add
+                </button>
+            </div>
+        </div>
+        <div class="groups-container" id="groups-container">
+            <!-- Groups will be added here dynamically -->
+        </div>
+    </div>
+
+    <div class="main-content" id="main-content">
+        <div class="empty-state" id="empty-state">
+            <h2>Welcome to Link Manager</h2>
+            <p>Create a group to start organizing your links.</p>
+            <button class="add-group-btn" id="add-group-button-empty">Add Group</button>
+        </div>
+        <div id="links-view" style="display: none;">
+            <div class="content-header">
+                <!-- Breadcrumbs will be inserted here dynamically -->
+                <h2 id="current-group-name">Group Name</h2>
+                <button class="add-link-btn" id="add-link-button">
+                    <i class="fas fa-plus"></i> Add Link
+                </button>
+            </div>
+            <div class="links-container" id="links-container">
+                <!-- Links will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Modal -->
+    <div class="modal" id="group-modal" data-parent-id="">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="group-modal-title">Add Group</h3>
+                <button class="close-modal" id="close-group-modal">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="group-name">Group Name</label>
+                <input type="text" id="group-name" placeholder="Enter group name">
+            </div>
+            <div class="form-group" id="group-parent-container">
+                <label for="group-parent">Parent Group (optional)</label>
+                <select id="group-parent">
+                    <option value="">Top Level (No Parent)</option>
+                    <!-- Group options will be added here dynamically -->
+                </select>
+            </div>
+            <div class="form-actions">
+                <button class="cancel-btn" id="cancel-group-modal">Cancel</button>
+                <button class="save-btn" id="save-group">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link Modal -->
+    <div class="modal" id="link-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="link-modal-title">Add Link</h3>
+                <button class="close-modal" id="close-link-modal">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="link-title">Link Title</label>
+                <input type="text" id="link-title" placeholder="Enter link title">
+            </div>
+            <div class="form-group">
+                <label for="link-url">Link URL</label>
+                <input type="text" id="link-url" placeholder="Enter URL (include https://)">
+            </div>
+            <div class="form-actions">
+                <button class="cancel-btn" id="cancel-link-modal">Cancel</button>
+                <button class="save-btn" id="save-link">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal" id="confirm-delete-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Delete</h3>
+                <button class="close-modal" id="close-confirm-delete-modal">&times;</button>
+            </div>
+            <p id="confirm-delete-message">Are you sure you want to delete this item?</p>
+            <div class="form-actions">
+                <button class="cancel-btn" id="cancel-confirm-delete">Cancel</button>
+                <button class="save-btn" id="confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+    <script>
+        // Data storage
+        let groups = JSON.parse(localStorage.getItem('linkGroups')) || [];
+        let currentGroupId = null;
+        let currentPath = []; // Array of group IDs representing the current path in the hierarchy
+
+        // DOM Elements
+        const groupsContainer = document.getElementById('groups-container');
+        const linksContainer = document.getElementById('links-container');
+        const currentGroupNameElement = document.getElementById('current-group-name');
+        const emptyState = document.getElementById('empty-state');
+        const linksView = document.getElementById('links-view');
+
+        // Group Modal Elements
+        const groupModal = document.getElementById('group-modal');
+        const groupModalTitle = document.getElementById('group-modal-title');
+        const groupNameInput = document.getElementById('group-name');
+        const groupParentSelect = document.getElementById('group-parent');
+        const groupParentContainer = document.getElementById('group-parent-container');
+        const addGroupButton = document.getElementById('add-group-button');
+        const addGroupButtonEmpty = document.getElementById('add-group-button-empty');
+        const closeGroupModal = document.getElementById('close-group-modal');
+        const cancelGroupModal = document.getElementById('cancel-group-modal');
+        const saveGroupButton = document.getElementById('save-group');
+
+        // Link Modal Elements
+        const linkModal = document.getElementById('link-modal');
+        const linkModalTitle = document.getElementById('link-modal-title');
+        const linkTitleInput = document.getElementById('link-title');
+        const linkUrlInput = document.getElementById('link-url');
+        const addLinkButton = document.getElementById('add-link-button');
+        const closeLinkModal = document.getElementById('close-link-modal');
+        const cancelLinkModal = document.getElementById('cancel-link-modal');
+        const saveLinkButton = document.getElementById('save-link');
+
+        // Confirm Delete Modal Elements
+        const confirmDeleteModal = document.getElementById('confirm-delete-modal');
+        const confirmDeleteMessage = document.getElementById('confirm-delete-message');
+        const closeConfirmDeleteModal = document.getElementById('close-confirm-delete-modal');
+        const cancelConfirmDelete = document.getElementById('cancel-confirm-delete');
+        const confirmDeleteButton = document.getElementById('confirm-delete');
+
+        // Modal state variables
+        let editingGroupId = null;
+        let editingLinkId = null;
+        let itemToDeleteId = null;
+        let deleteType = null;
+
+        // Recursively find a group by ID in the nested structure
+        function findGroupById(id, groupsArray = groups) {
+            for (let group of groupsArray) {
+                if (group.id === id) {
+                    return group;
+                }
+                
+                if (group.subgroups && group.subgroups.length > 0) {
+                    const found = findGroupById(id, group.subgroups);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        // Find parent group for a given group ID
+        function findParentGroup(id, groupsArray = groups, parent = null) {
+            for (let group of groupsArray) {
+                if (group.id === id) {
+                    return parent;
+                }
+                
+                if (group.subgroups && group.subgroups.length > 0) {
+                    const found = findParentGroup(id, group.subgroups, group);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        // Build path array to a group
+        function buildPathToGroup(id, path = [], groupsArray = groups) {
+            for (let group of groupsArray) {
+                if (group.id === id) {
+                    path.push(group.id);
+                    return true;
+                }
+                
+                if (group.subgroups && group.subgroups.length > 0) {
+                    path.push(group.id);
+                    const found = buildPathToGroup(id, path, group.subgroups);
+                    if (found) return true;
+                    path.pop(); // Remove if not found in this branch
+                }
+            }
+            return false;
+        }
+
+        // Get full path to a group
+        function getPathToGroup(id) {
+            const path = [];
+            buildPathToGroup(id, path);
+            return path;
+        }
+
+        // Initialize the app
+        function init() {
+            // Initialize existing structure for backward compatibility
+            groups.forEach(group => {
+                if (!group.subgroups) group.subgroups = [];
+            });
+
+            renderGroups();
+            updateMainContentView();
+            
+            // Add breadcrumb container to content header
+            const contentHeader = document.querySelector('.content-header');
+            if (!document.querySelector('.breadcrumb-container')) {
+                const breadcrumbContainer = document.createElement('div');
+                breadcrumbContainer.className = 'breadcrumb-container';
+                contentHeader.insertBefore(breadcrumbContainer, contentHeader.firstChild);
+            }
+            
+            // Attach event listeners
+            addGroupButton.addEventListener('click', () => openAddGroupModal(null));
+            addGroupButtonEmpty.addEventListener('click', () => openAddGroupModal(null));
+            closeGroupModal.addEventListener('click', closeModal);
+            cancelGroupModal.addEventListener('click', closeModal);
+            saveGroupButton.addEventListener('click', saveGroup);
+            
+            addLinkButton.addEventListener('click', openAddLinkModal);
+            closeLinkModal.addEventListener('click', closeModal);
+            cancelLinkModal.addEventListener('click', closeModal);
+            saveLinkButton.addEventListener('click', saveLink);
+            
+            closeConfirmDeleteModal.addEventListener('click', closeModal);
+            cancelConfirmDelete.addEventListener('click', closeModal);
+            confirmDeleteButton.addEventListener('click', confirmDelete);
+        }
+
+        // Render groups in the sidebar with subgroups
+        function renderGroups(groupsArray = groups, level = 0, parentElement = groupsContainer) {
+            if (level === 0) {
+                parentElement.innerHTML = '';
+            }
+            
+            groupsArray.forEach(group => {
+                const groupItem = document.createElement('div');
+                groupItem.className = `group-item ${currentPath.includes(group.id) ? 'active' : ''}`;
+                groupItem.style.paddingLeft = `${15 + (level * 15)}px`; // Indentation based on level
+                
+                const hasSubgroups = group.subgroups && group.subgroups.length > 0;
+                const isExpanded = currentPath.includes(group.id);
+                
+                let expandIcon = '';
+                if (hasSubgroups) {
+                    expandIcon = `<span class="expand-icon ${isExpanded ? 'expanded' : ''}">${isExpanded ? '▼' : '▶'}</span>`;
+                }
+                
+                groupItem.innerHTML = `
+                    ${expandIcon}
+                    <span class="group-name">${group.name}</span>
+                    <button class="menu-toggle" data-id="${group.id}">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="dropdown-menu" id="dropdown-${group.id}">
+                        <a class="dropdown-item add-subgroup" data-id="${group.id}">
+                            <i class="fas fa-folder-plus"></i> Add Subgroup
+                        </a>
+                        <a class="dropdown-item edit-group" data-id="${group.id}">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a class="dropdown-item delete-group" data-id="${group.id}">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </div>
+                `;
+                
+                groupItem.addEventListener('click', (e) => {
+                    // Only select the group if we didn't click the menu, its children, or expand icon
+                    if (!e.target.closest('.menu-toggle') && 
+                        !e.target.closest('.dropdown-menu') &&
+                        !e.target.closest('.expand-icon')) {
+                        selectGroup(group.id);
+                    }
+                    
+                    // Handle expand/collapse icon click
+                    if (e.target.closest('.expand-icon')) {
+                        e.stopPropagation();
+                        toggleSubgroupExpansion(group.id);
+                    }
+                });
+                
+                parentElement.appendChild(groupItem);
+                
+                // Recursively render subgroups if expanded
+                if (hasSubgroups && isExpanded) {
+                    // Create a container for subgroups
+                    const subgroupContainer = document.createElement('div');
+                    subgroupContainer.className = 'subgroup-container';
+                    subgroupContainer.id = `subgroup-container-${group.id}`;
+                    parentElement.appendChild(subgroupContainer);
+                    
+                    renderGroups(group.subgroups, level + 1, subgroupContainer);
+                }
+            });
+            
+            // Add event listeners for menu toggles and actions
+            if (level === 0) {
+                addEventListenersToGroupItems();
+            }
+        }
+
+        // Add event listeners to group items after rendering
+        function addEventListenersToGroupItems() {
+            // Menu toggle event listeners
+            document.querySelectorAll('.menu-toggle').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const groupId = button.dataset.id;
+                    const dropdown = document.getElementById(`dropdown-${groupId}`);
+                    
+                    // Close all other dropdowns first
+                    document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                        if (menu !== dropdown) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                    
+                    // Toggle this dropdown
+                    dropdown.classList.toggle('show');
+                });
+            });
+            
+            // Add subgroup event listeners
+            document.querySelectorAll('.add-subgroup').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openAddGroupModal(item.dataset.id); // Pass parent ID
+                    // Hide dropdown after action
+                    document.getElementById(`dropdown-${item.dataset.id}`).classList.remove('show');
+                });
+            });
+            
+            // Edit group event listeners
+            document.querySelectorAll('.edit-group').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditGroupModal(item.dataset.id);
+                    // Hide dropdown after action
+                    document.getElementById(`dropdown-${item.dataset.id}`).classList.remove('show');
+                });
+            });
+            
+            // Delete group event listeners
+            document.querySelectorAll('.delete-group').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openDeleteGroupConfirmation(item.dataset.id);
+                    // Hide dropdown after action
+                    document.getElementById(`dropdown-${item.dataset.id}`).classList.remove('show');
+                });
+            });
+            
+            // Close dropdown menus when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown-menu') && !e.target.closest('.menu-toggle')) {
+                    document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                        menu.classList.remove('show');
+                    });
+                }
+            });
+        }
+
+        // Toggle expansion state of a group with subgroups
+        function toggleSubgroupExpansion(groupId) {
+            const index = currentPath.indexOf(groupId);
+            if (index !== -1) {
+                // If already in path, remove it and all children to collapse
+                currentPath.splice(index + 1);
+            } else {
+                // If not in path, add it to expand
+                currentPath.push(groupId);
+            }
+            
+            renderGroups();
+        }
+
+        // Select a group and set the current path
+        function selectGroup(groupId) {
+            currentGroupId = groupId;
+            currentPath = getPathToGroup(groupId);
+            renderGroups();
+            updateMainContentView();
+            updateBreadcrumbs();
+        }
+
+        // Update breadcrumb navigation
+        function updateBreadcrumbs() {
+            const breadcrumbContainer = document.querySelector('.breadcrumb-container');
+            if (!breadcrumbContainer) return;
+            
+            breadcrumbContainer.innerHTML = '';
+            
+            // Create breadcrumb elements for each level in the path
+            for (let i = 0; i < currentPath.length; i++) {
+                const groupId = currentPath[i];
+                const group = findGroupById(groupId);
+                if (!group) continue;
+                
+                // Create breadcrumb item
+                const breadcrumb = document.createElement('span');
+                breadcrumb.className = 'breadcrumb-item';
+                
+                // Last item in path is current group
+                if (i === currentPath.length - 1) {
+                    breadcrumb.classList.add('active');
+                    breadcrumb.textContent = group.name;
+                } else {
+                    breadcrumb.innerHTML = `<a href="#" data-id="${groupId}">${group.name}</a> <span class="separator">›</span>`;
+                    
+                    // Add click event to navigate to this level
+                    const link = breadcrumb.querySelector('a');
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        selectGroup(groupId);
+                    });
+                }
+                
+                breadcrumbContainer.appendChild(breadcrumb);
+            }
+        }
+
+        // Render links for the current group
+        function renderLinks() {
+            if (!currentGroupId) return;
+            
+            linksContainer.innerHTML = '';
+            
+            const currentGroup = findGroupById(currentGroupId);
+            if (!currentGroup) return;
+            
+            currentGroupNameElement.textContent = currentGroup.name;
+            
+            if (currentGroup.links.length === 0) {
+                linksContainer.innerHTML = `
+                    <div class="empty-state">
+                        <p>No links in this group yet.</p>
+                        <p>Click the "Add Link" button to add your first link.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            currentGroup.links.forEach(link => {
+                const linkCard = document.createElement('div');
+                linkCard.className = 'link-card';
+                
+                // Get domain for favicon
+                let faviconUrl;
+                try {
+                    const url = new URL(link.url);
+                    faviconUrl = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
+                } catch (e) {
+                    faviconUrl = '';
+                }
+                
+                linkCard.innerHTML = `
+                    <div class="link-header">
+                        <div class="link-title-wrapper">
+                            <div class="link-icon">
+                                ${faviconUrl ? 
+                                    `<img src="${faviconUrl}" alt="Site icon" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                                    <i class="fas fa-globe link-icon-fallback" style="display:none;"></i>` 
+                                    : 
+                                    `<i class="fas fa-globe link-icon-fallback"></i>`
+                                }
+                            </div>
+                            <div class="link-title">${link.title}</div>
+                        </div>
+                        <button class="link-menu-toggle" data-id="${link.id}">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="link-dropdown-menu dropdown-menu" id="link-dropdown-${link.id}">
+                            <a class="dropdown-item edit-link" data-id="${link.id}">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a class="dropdown-item delete-link" data-id="${link.id}">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                    <div class="link-url">${link.url}</div>
+                    <a href="${link.url}" target="_blank" class="open-link">Open Link</a>
+                `;
+                
+                linksContainer.appendChild(linkCard);
+            });
+            
+            // Add event listeners for menu toggles
+            document.querySelectorAll('.link-menu-toggle').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const linkId = button.dataset.id;
+                    const dropdown = document.getElementById(`link-dropdown-${linkId}`);
+                    
+                    // Close all other dropdowns first
+                    document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+                        if (menu !== dropdown) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                    
+                    // Toggle this dropdown
+                    dropdown.classList.toggle('show');
+                });
+            });
+            
+            // Add event listeners for edit and delete options
+            document.querySelectorAll('.edit-link').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditLinkModal(item.dataset.id);
+                    // Hide dropdown after action
+                    document.getElementById(`link-dropdown-${item.dataset.id}`).classList.remove('show');
+                });
+            });
+            
+            document.querySelectorAll('.delete-link').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openDeleteLinkConfirmation(item.dataset.id);
+                    // Hide dropdown after action
+                    document.getElementById(`link-dropdown-${item.dataset.id}`).classList.remove('show');
+                });
+            });
+        }
+
+        // Update main content view based on current state
+        function updateMainContentView() {
+            if (groups.length === 0 || !currentGroupId) {
+                emptyState.style.display = 'block';
+                linksView.style.display = 'none';
+            } else {
+                emptyState.style.display = 'none';
+                linksView.style.display = 'block';
+                renderLinks();
+            }
+        }
+
+        // Open add group modal with optional parent group
+        function openAddGroupModal(parentId) {
+            groupModalTitle.textContent = parentId ? 'Add Subgroup' : 'Add Group';
+            groupNameInput.value = '';
+            editingGroupId = null;
+            
+            // Store parent ID in a data attribute
+            groupModal.dataset.parentId = parentId || '';
+            
+            // Handle parent group dropdown
+            if (parentId) {
+                groupParentContainer.style.display = 'none';
+            } else {
+                groupParentContainer.style.display = 'block';
+                populateParentDropdown(groupParentSelect);
+            }
+            
+            openModal(groupModal);
+        }
+
+        // Open edit group modal
+        function openEditGroupModal(groupId) {
+            const group = findGroupById(groupId);
+            if (!group) return;
+            
+            groupModalTitle.textContent = 'Edit Group';
+            groupNameInput.value = group.name;
+            editingGroupId = groupId;
+            
+            // Find parent ID for possible reassignment
+            const parentGroup = findParentGroup(groupId);
+            groupModal.dataset.parentId = parentGroup ? parentGroup.id : '';
+            
+            // Show parent group dropdown for moving between hierarchies
+            groupParentContainer.style.display = 'block';
+            
+            // Populate the parent dropdown, excluding the current group and its descendants
+            populateParentDropdown(groupParentSelect, groupId);
+            
+            openModal(groupModal);
+        }
+
+        // Populate the parent group dropdown, excluding the current group and its descendants
+        function populateParentDropdown(selectElement, excludeGroupId = null) {
+            selectElement.innerHTML = '<option value="">Top Level (No Parent)</option>';
+            
+            function addGroupOptions(groupsArray, level = 0) {
+                groupsArray.forEach(group => {
+                    // Skip the current group and its descendants to prevent circular references
+                    if (group.id === excludeGroupId) return;
+                    
+                    const option = document.createElement('option');
+                    option.value = group.id;
+                    option.textContent = '─'.repeat(level) + ' ' + group.name;
+                    option.selected = group.id === groupModal.dataset.parentId;
+                    selectElement.appendChild(option);
+                    
+                    // Recursively add subgroups
+                    if (group.subgroups && group.subgroups.length > 0) {
+                        addGroupOptions(group.subgroups, level + 1);
+                    }
+                });
+            }
+            
+            addGroupOptions(groups);
+        }
+
+        // Open add link modal
+        function openAddLinkModal() {
+            linkModalTitle.textContent = 'Add Link';
+            linkTitleInput.value = '';
+            linkUrlInput.value = '';
+            editingLinkId = null;
+            openModal(linkModal);
+        }
+
+        // Open edit link modal
+        function openEditLinkModal(linkId) {
+            const currentGroup = findGroupById(currentGroupId);
+            if (!currentGroup) return;
+            
+            const link = currentGroup.links.find(link => link.id === linkId);
+            if (!link) return;
+            
+            linkModalTitle.textContent = 'Edit Link';
+            linkTitleInput.value = link.title;
+            linkUrlInput.value = link.url;
+            editingLinkId = linkId;
+            openModal(linkModal);
+        }
+
+        // Open delete group confirmation
+        function openDeleteGroupConfirmation(groupId) {
+            const group = findGroupById(groupId);
+            if (!group) return;
+            
+            let subgroupCount = 0;
+            let linkCount = group.links.length;
+            
+            // Count all subgroups and their links recursively
+            function countItems(subgroups) {
+                subgroupCount += subgroups.length;
+                subgroups.forEach(subgroup => {
+                    linkCount += subgroup.links.length;
+                    if (subgroup.subgroups && subgroup.subgroups.length > 0) {
+                        countItems(subgroup.subgroups);
+                    }
+                });
+            }
+            
+            if (group.subgroups && group.subgroups.length > 0) {
+                countItems(group.subgroups);
+            }
+            
+            let message = `Are you sure you want to delete the group "${group.name}"`;
+            if (subgroupCount > 0 || linkCount > 0) {
+                message += ` and all its contents (${subgroupCount} subgroup${subgroupCount !== 1 ? 's' : ''}, ${linkCount} link${linkCount !== 1 ? 's' : ''})?`;
+            } else {
+                message += '?';
+            }
+            
+            confirmDeleteMessage.textContent = message;
+            itemToDeleteId = groupId;
+            deleteType = 'group';
+            openModal(confirmDeleteModal);
+        }
+
+        // Open delete link confirmation
+        function openDeleteLinkConfirmation(linkId) {
+            const currentGroup = findGroupById(currentGroupId);
+            if (!currentGroup) return;
+            
+            const link = currentGroup.links.find(link => link.id === linkId);
+            if (!link) return;
+            
+            confirmDeleteMessage.textContent = `Are you sure you want to delete the link "${link.title}"?`;
+            itemToDeleteId = linkId;
+            deleteType = 'link';
+            openModal(confirmDeleteModal);
+        }
+
+        // Open modal
+        function openModal(modal) {
+            modal.style.display = 'flex';
+        }
+
+        // Close all modals
+        function closeModal() {
+            groupModal.style.display = 'none';
+            linkModal.style.display = 'none';
+            confirmDeleteModal.style.display = 'none';
+        }
+
+        // Save group
+        function saveGroup() {
+            const groupName = groupNameInput.value.trim();
+            if (!groupName) {
+                alert('Please enter a group name');
+                return;
+            }
+            
+            // Get parent ID from the form
+            let parentId = groupModal.dataset.parentId || '';
+            if (groupParentContainer.style.display !== 'none') {
+                parentId = groupParentSelect.value;
+            }
+            
+            if (editingGroupId) {
+                // Edit existing group
+                const currentGroup = findGroupById(editingGroupId);
+                const currentParent = findParentGroup(editingGroupId);
+                
+                if (currentGroup) {
+                    // Update the name
+                    currentGroup.name = groupName;
+                    
+                    // Handle possible parent change
+                    if ((currentParent?.id || '') !== parentId) {
+                        // Remove from current parent
+                        if (currentParent) {
+                            const index = currentParent.subgroups.findIndex(g => g.id === editingGroupId);
+                            if (index !== -1) {
+                                const removedGroup = currentParent.subgroups.splice(index, 1)[0];
+                                
+                                // Add to new parent
+                                if (parentId) {
+                                    const newParent = findGroupById(parentId);
+                                    if (newParent) {
+                                        if (!newParent.subgroups) newParent.subgroups = [];
+                                        newParent.subgroups.push(removedGroup);
+                                    }
+                                } else {
+                                    // Move to top level
+                                    groups.push(removedGroup);
+                                }
+                            }
+                        } else {
+                            // Currently at top level, move to a parent
+                            if (parentId) {
+                                const index = groups.findIndex(g => g.id === editingGroupId);
+                                if (index !== -1) {
+                                    const removedGroup = groups.splice(index, 1)[0];
+                                    const newParent = findGroupById(parentId);
+                                    if (newParent) {
+                                        if (!newParent.subgroups) newParent.subgroups = [];
+                                        newParent.subgroups.push(removedGroup);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Add new group/subgroup
+                const newGroup = {
+                    id: Date.now().toString(),
+                    name: groupName,
+                    links: [],
+                    subgroups: []
+                };
+                
+                if (parentId) {
+                    // Add as subgroup
+                    const parentGroup = findGroupById(parentId);
+                    if (parentGroup) {
+                        if (!parentGroup.subgroups) parentGroup.subgroups = [];
+                        parentGroup.subgroups.push(newGroup);
+                        
+                        // Select the new subgroup
+                        currentGroupId = newGroup.id;
+                        currentPath = getPathToGroup(newGroup.id);
+                    }
+                } else {
+                    // Add as top-level group
+                    groups.push(newGroup);
+                    
+                    // Select the new group if no group is currently selected
+                    if (!currentGroupId) {
+                        currentGroupId = newGroup.id;
+                        currentPath = [newGroup.id];
+                    }
+                }
+            }
+            
+            // Save to localStorage and update UI
+            saveData();
+            renderGroups();
+            updateMainContentView();
+            updateBreadcrumbs();
+            closeModal();
+        }
+
+        // Save link
+        function saveLink() {
+            const linkTitle = linkTitleInput.value.trim();
+            let linkUrl = linkUrlInput.value.trim();
+            
+            if (!linkTitle || !linkUrl) {
+                alert('Please enter both title and URL');
+                return;
+            }
+            
+            // Add https:// if not present
+            if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
+                linkUrl = 'https://' + linkUrl;
+            }
+            
+            const currentGroup = findGroupById(currentGroupId);
+            if (!currentGroup) return;
+            
+            if (editingLinkId) {
+                // Edit existing link
+                const linkIndex = currentGroup.links.findIndex(link => link.id === editingLinkId);
+                if (linkIndex !== -1) {
+                    currentGroup.links[linkIndex].title = linkTitle;
+                    currentGroup.links[linkIndex].url = linkUrl;
+                }
+            } else {
+                // Add new link
+                const newLink = {
+                    id: Date.now().toString(),
+                    title: linkTitle,
+                    url: linkUrl
+                };
+                currentGroup.links.push(newLink);
+            }
+            
+            // Save to localStorage and update UI
+            saveData();
+            renderLinks();
+            closeModal();
+        }
+
+        // Confirm delete
+        function confirmDelete() {
+            if (deleteType === 'group') {
+                deleteGroup(itemToDeleteId);
+            } else if (deleteType === 'link') {
+                deleteLink(itemToDeleteId);
+            }
+            closeModal();
+        }
+
+        // Delete group (and all subgroups)
+        function deleteGroup(groupId) {
+            const parentGroup = findParentGroup(groupId);
+            
+            if (parentGroup) {
+                // Remove from parent's subgroups
+                const index = parentGroup.subgroups.findIndex(g => g.id === groupId);
+                if (index !== -1) {
+                    parentGroup.subgroups.splice(index, 1);
+                }
+            } else {
+                // Remove from top level
+                const index = groups.findIndex(g => g.id === groupId);
+                if (index !== -1) {
+                    groups.splice(index, 1);
+                }
+            }
+            
+            // If the deleted group was the current group, select parent or another group
+            if (currentGroupId === groupId) {
+                if (parentGroup) {
+                    currentGroupId = parentGroup.id;
+                    currentPath = getPathToGroup(parentGroup.id);
+                } else {
+                    currentGroupId = groups.length > 0 ? groups[0].id : null;
+                    currentPath = currentGroupId ? [currentGroupId] : [];
+                }
+            }
+            
+            saveData();
+            renderGroups();
+            updateMainContentView();
+            updateBreadcrumbs();
+        }
+
+        // Delete link
+        function deleteLink(linkId) {
+            const currentGroup = findGroupById(currentGroupId);
+            if (!currentGroup) return;
+            
+            const linkIndex = currentGroup.links.findIndex(link => link.id === linkId);
+            if (linkIndex === -1) return;
+            
+            currentGroup.links.splice(linkIndex, 1);
+            
+            saveData();
+            renderLinks();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('linkGroups', JSON.stringify(groups));
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

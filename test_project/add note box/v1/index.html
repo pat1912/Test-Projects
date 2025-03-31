@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Note Input</title>
+    <!-- Font Awesome for icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Language Selector (Optional but good for testing) -->
+    <div class="lang-selector">
+        <button class="lang-btn active" data-lang="en">English</button>
+        <button class="lang-btn" data-lang="he">עברית</button>
+    </div>
+
+    <h1 id="main-title"></h1>
+
+    <div class="enhanced-input-container">
+        <textarea id="note-textarea" placeholder="" rows="1" dir="auto"></textarea>
+        <button id="submit-note-btn" aria-label="" disabled>
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+
+    <h2 id="submitted-title"></h2>
+    <ul id="submitted-notes-list">
+        <!-- Notes will appear here -->
+    </ul>
+
+    <script>
+        const textarea = document.getElementById('note-textarea');
+        const submitBtn = document.getElementById('submit-note-btn');
+        const notesList = document.getElementById('submitted-notes-list');
+        const langBtns = document.querySelectorAll('.lang-btn');
+        const mainTitle = document.getElementById('main-title');
+        const submittedTitle = document.getElementById('submitted-title');
+
+        // --- Translations ---
+        const translations = {
+            en: {
+                title: "Add Your Note",
+                submittedTitle: "Submitted Notes (Example Output):",
+                placeholder: "Type your note here... (Enter to add, Shift+Enter for new line, '- ' for bullets)", // Updated placeholder
+                submitAriaLabel: "Add Note"
+            },
+            he: {
+                title: "הוסף את ההערה שלך",
+                submittedTitle: "הערות שהוגשו (פלט לדוגמה):",
+                placeholder: "הקלד את ההערה שלך כאן... (אנטר להוספה, שיפט+אנטר לשורה חדשה, '- ' לרשימה)", // Updated placeholder
+                submitAriaLabel: "הוסף הערה"
+            }
+        };
+        let currentLang = 'en';
+
+        function updateLanguage() {
+            const trans = translations[currentLang];
+            mainTitle.textContent = trans.title;
+            submittedTitle.textContent = trans.submittedTitle;
+            textarea.placeholder = trans.placeholder;
+            submitBtn.setAttribute('aria-label', trans.submitAriaLabel);
+            document.body.dir = currentLang === 'he' ? 'rtl' : 'ltr';
+            langBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === currentLang);
+            });
+        }
+
+        function autoResizeTextarea() {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight + 2) + 'px';
+        }
+
+        // --- Bullet Point Conversion (RE-ADDED) ---
+        function handleBulletPoints() {
+            const value = textarea.value;
+            const cursorPos = textarea.selectionStart;
+
+            // Check if just typed "- " -> need to check 3 chars back for "\n- " or beginning "- "
+            if (cursorPos >= 2) { // Need at least 2 chars to check for "- "
+                const checkString = value.substring(cursorPos - 2, cursorPos);
+
+                if (checkString === '- ') {
+                    const charBeforeDash = cursorPos > 2 ? value[cursorPos - 3] : '\n'; // Simulate newline if at start
+
+                    if (charBeforeDash === '\n') { // Check if it's at the beginning of a line
+                        const start = cursorPos - 2;
+                        const newValue = value.substring(0, start) + '• ' + value.substring(cursorPos);
+                        textarea.value = newValue;
+                        // Restore cursor position right after the bullet point + space
+                        textarea.selectionStart = textarea.selectionEnd = start + 2;
+                        return true; // Indicate that a replacement happened
+                    }
+                }
+            }
+            return false; // No replacement happened
+        }
+
+
+        function updateButtonState() {
+            const text = textarea.value.trim();
+            submitBtn.disabled = !text;
+        }
+
+        function submitNote() {
+            const text = textarea.value.trim();
+            if (text) {
+                console.log("Submitting Note:", text);
+
+                const li = document.createElement('li');
+                li.style.whiteSpace = 'pre-wrap';
+                li.dir = 'auto';
+                li.textContent = text;
+                notesList.prepend(li);
+
+                textarea.value = '';
+                autoResizeTextarea();
+                updateButtonState();
+                textarea.focus();
+            } else {
+                console.log("Textarea empty, not submitting.");
+            }
+        }
+
+        // --- Event Listeners ---
+        textarea.addEventListener('input', () => {
+            autoResizeTextarea();
+            // --- CALL handleBulletPoints AGAIN ---
+            // Only update button state if bullet points didn't modify the text,
+            // as the modification itself triggers another 'input' event.
+            // This prevents potential flicker.
+            if (!handleBulletPoints()) {
+                 updateButtonState();
+            }
+            // If handleBulletPoints *did* run, the next 'input' event triggered
+            // by the modification will correctly call updateButtonState.
+        });
+
+
+        textarea.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                submitNote();
+            }
+            // Let Shift+Enter create a newline by default
+        });
+
+        submitBtn.addEventListener('click', submitNote);
+
+        langBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLang = btn.getAttribute('data-lang');
+                updateLanguage();
+            });
+        });
+
+        // --- Initial Setup ---
+        updateLanguage();
+        autoResizeTextarea();
+        updateButtonState();
+
+    </script>
+
+</body>
+</html>

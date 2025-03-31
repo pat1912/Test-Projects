@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrome Bookmark Style List with Scrollbars & Drop</title>
+    <style>
+        :root {
+            --body-bg: #fff;
+            --text-color: #202124;
+            --secondary-text-color: #5f6368;
+            --separator-color: #dadce0;
+            --hover-bg: #f1f3f4;
+            --selected-bg: #e8f0fe;
+            --selected-color: #1967d2; /* Blue */
+            --icon-color: #5f6368;
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            --font-size: 13px;
+            --item-height: 28px;
+            --indent-size: 20px;
+            --drop-target-bg: #e6f4ea;
+            --drop-target-border: #1e8e3e;
+            --scrollbar-size: 8px;
+            --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
+            --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.4);
+            --scrollbar-padding: 2px;
+            --menu-bg: #fff;
+            --menu-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            --menu-border: #ccc;
+            --menu-item-hover-bg: var(--hover-bg);
+            --fav-color: #ffab00; /* Yellowish */
+            --recent-color: var(--selected-color); /* Blue */
+            --section-title-color: #606469;
+        }
+
+        body {
+            font-family: var(--font-family);
+            font-size: var(--font-size);
+            color: var(--text-color);
+            background-color: var(--body-bg);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center; /* Center the whole content area */
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        /* Wrapper for non-scrolling + scrolling parts */
+        .bookmarks-area {
+            width: 300px; /* Fixed width for the entire component */
+            border: 1px solid var(--separator-color);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column; /* Stack sections vertically */
+        }
+
+        /* --- Favorites / Recent Sections --- */
+        .static-section {
+            padding: 8px 4px 4px 12px; /* Top/Horizontal/Bottom/Left */
+            border-bottom: 1px solid var(--separator-color);
+        }
+        .static-section:last-of-type {
+             /* border-bottom: none; /* Remove border if it's the last thing before scroll container */
+        }
+
+        .static-section h3 {
+            font-size: 11px; /* Smaller bold title */
+            font-weight: 600;
+            color: var(--section-title-color);
+            margin: 0 0 4px 0;
+            text-transform: uppercase;
+        }
+
+        .static-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .static-section li {
+             position: relative; /* For the ::before pseudo-element */
+             padding-left: 12px; /* Space for the colored bar */
+             margin-bottom: 2px;
+        }
+        /* Item content styling similar to main list but simpler */
+        .static-section .static-item-content {
+            display: flex;
+            align-items: center;
+            height: var(--item-height);
+            padding: 0 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .static-section .static-item-content:hover {
+            background-color: var(--hover-bg);
+        }
+
+        /* Colored side bars */
+        .static-section li::before {
+            content: '';
+            position: absolute;
+            left: 4px; /* Position left of the content */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: calc(var(--item-height) - 8px); /* Make it shorter than item height */
+            border-radius: 2px;
+        }
+        .favorites-section li::before { background-color: var(--fav-color); }
+        .recent-section li::before { background-color: var(--recent-color); }
+
+        /* Icons within static sections (if needed) */
+        .static-section .icon {
+            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            display: inline-block;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-image: var(--icon-folder); /* Default to folder for example */
+        }
+        .static-section .name { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }
+
+
+        /* --- Scroll Container (Main List) --- */
+        .bookmark-list-container {
+            /* width: 100%; Take full width of parent */
+            max-height: 300px; /* Adjusted max-height */
+            overflow-y: auto;
+            overflow-x: auto;
+            /* border: 1px solid var(--separator-color); Remove border, handled by wrapper */
+            /* border-radius: 4px; */
+            padding: 4px;
+            flex-shrink: 1; /* Allow shrinking if content above grows */
+            min-height: 100px; /* Ensure it doesn't collapse completely */
+        }
+
+        /* --- Webkit Scrollbar Styling (Unchanged) --- */
+        .bookmark-list-container::-webkit-scrollbar { width: var(--scrollbar-size); height: var(--scrollbar-size); }
+        .bookmark-list-container::-webkit-scrollbar-track { background: transparent; }
+        .bookmark-list-container::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb-color); border-radius: calc(var(--scrollbar-size) / 2); border: var(--scrollbar-padding) solid transparent; background-clip: padding-box; }
+        .bookmark-list-container::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover-color); }
+        .bookmark-list-container::-webkit-scrollbar-corner { background: transparent; }
+
+        /* --- List Styling (Main List - mostly unchanged) --- */
+        .bookmark-list-container ul { list-style: none; padding: 0; margin: 0; }
+        .bookmark-list-container ul#bookmark-root { min-width: 450px; /* Adjusted min-width test */ }
+        .bookmark-list-container ul ul { padding-left: var(--indent-size); }
+        .bookmark-list-container li { margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -moz-user-select: none; }
+        .bookmark-list-container .item-content { display: flex; align-items: center; height: var(--item-height); padding: 0 8px; cursor: pointer; border-radius: 4px; white-space: nowrap; border: 1px solid transparent; position: relative; /* Needed for dots positioning */ }
+        .bookmark-list-container li:not(.selected) > .item-content:hover { background-color: var(--hover-bg); }
+        .bookmark-list-container li.selected > .item-content { background-color: var(--selected-bg); color: var(--selected-color); }
+        .bookmark-list-container .caret { flex-shrink: 0; width: 16px; height: 16px; margin-right: 4px; display: inline-flex; align-items: center; justify-content: center; color: var(--icon-color); visibility: hidden; transition: transform 0.1s ease-in-out; }
+        .bookmark-list-container li.folder > .item-content > .caret { visibility: visible; }
+        .bookmark-list-container li.collapsed > .item-content > .caret { transform: rotate(-90deg); }
+        .bookmark-list-container li.selected > .item-content > .caret { color: var(--selected-color); }
+        .bookmark-list-container .caret svg { width: 10px; height: 10px; fill: currentColor; }
+        .bookmark-list-container .icon { flex-shrink: 0; width: 16px; height: 16px; margin-right: 8px; display: inline-block; background-size: contain; background-repeat: no-repeat; background-position: center; }
+        .bookmark-list-container .name { flex-grow: 1; flex-shrink: 0; white-space: nowrap; margin-right: 20px; /* Space for dots */ }
+        .bookmark-list-container li.folder.collapsed > ul { display: none; }
+        .bookmark-list-container li > .item-content:focus { outline: 2px solid var(--selected-color); outline-offset: -2px; }
+        .bookmark-list-container li > .item-content:focus:not(:focus-visible) { outline: none; }
+        .bookmark-list-container li.folder > .item-content.drop-target-active { background-color: var(--drop-target-bg); border: 1px solid var(--drop-target-border); }
+
+        /* --- Icons (Unchanged) --- */
+        :root {
+             --icon-folder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E");
+            --icon-folder-selected: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%231967d2'%3E%3Cpath d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'%3E%3C/path%3E%3C/svg%3E");
+            --icon-bookmark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'%3E%3C/path%3E%3Cpolyline points='14 2 14 8 20 8'%3E%3C/polyline%3E%3C/svg%3E");
+             --icon-google-translate: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 48 48' fill='%234285F4'%3E%3Cpath d='M 12.2 34.3 L 19.1 20.3 H 28.9 L 35.8 34.3 H 31.4 L 29.8 30.3 H 18.2 L 16.6 34.3 H 12.2 Z M 20.7 27.3 H 27.3 L 24 15.7 L 20.7 27.3 Z M 38 40 V 34 H 10 V 40 H 38 Z'%3E%3C/path%3E%3C/svg%3E");
+             --icon-dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%235f6368'%3E%3Cpath d='M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'%3E%3C/path%3E%3C/svg%3E");
+        }
+        .bookmark-list-container li.folder > .item-content > .icon { background-image: var(--icon-folder); }
+        .bookmark-list-container li.bookmark-item > .item-content > .icon { background-image: var(--icon-bookmark); }
+        .bookmark-list-container li#bookmark-google-translate > .item-content > .icon { background-image: var(--icon-google-translate); }
+        .bookmark-list-container li.folder.selected > .item-content > .icon { background-image: var(--icon-folder-selected); }
+
+        /* --- Dots Icon --- */
+        .dots-icon {
+            display: none; /* Hidden by default */
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px; /* Slightly larger clickable area */
+            height: 20px;
+            background-image: var(--icon-dots);
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 16px 16px;
+            border-radius: 50%;
+            cursor: pointer;
+             z-index: 5; /* Above item content */
+        }
+        .bookmark-list-container li.folder > .item-content:hover .dots-icon {
+            display: block; /* Show on folder hover */
+        }
+        .dots-icon:hover {
+            background-color: var(--hover-bg); /* Feedback on hover */
+        }
+         /* Ensure selected state doesn't hide hover effect */
+         .bookmark-list-container li.folder.selected > .item-content:hover .dots-icon {
+             display: block;
+         }
+         .bookmark-list-container li.folder.selected > .item-content .dots-icon {
+              /* Optionally change dots color when selected */
+              /* background-image: url("..."); */
+         }
+
+
+        /* --- Context Menu --- */
+        #context-menu {
+            position: absolute;
+            display: none; /* Hidden initially */
+            background-color: var(--menu-bg);
+            border: 1px solid var(--menu-border);
+            border-radius: 4px;
+            box-shadow: var(--menu-shadow);
+            padding: 4px 0; /* Vertical padding */
+            min-width: 150px;
+            z-index: 1000; /* Ensure it's above everything */
+        }
+        #context-menu button {
+            display: block;
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 6px 16px; /* Padding */
+            text-align: left;
+            font-size: var(--font-size);
+            color: var(--text-color);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        #context-menu button:hover {
+            background-color: var(--menu-item-hover-bg);
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Wrapper for all bookmark-related UI -->
+<div class="bookmarks-area">
+
+    <!-- Favorites Section -->
+    <div class="static-section favorites-section">
+        <h3>Favorites</h3>
+        <ul>
+            <li>
+                 <div class="static-item-content" title="Bookmarks bar (Favorite)">
+                     <span class="icon"></span><span class="name">Bookmarks bar</span>
+                 </div>
+            </li>
+            <!-- Add more favorite items here if needed -->
+        </ul>
+    </div>
+
+    <!-- Recent Section -->
+    <div class="static-section recent-section">
+        <h3>Recent</h3>
+        <ul>
+            <li>
+                 <div class="static-item-content" title="AI tools (Recent)">
+                    <span class="icon"></span><span class="name">AI tools</span>
+                 </div>
+            </li>
+            <li>
+                 <div class="static-item-content" title="Quantum Computing... (Recent)">
+                     <span class="icon"></span><span class="name">Quantum Computing...</span>
+                 </div>
+            </li>
+            <!-- Add more recent items here -->
+        </ul>
+    </div>
+
+
+    <!-- Scrollable Container Div -->
+    <div class="bookmark-list-container">
+        <ul id="bookmark-root">
+            <!-- Item matching the "Bookmarks bar" selected folder -->
+            <li id="folder-bar" class="folder selected" data-id="1">
+                <div class="item-content" tabindex="0">
+                     <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                     <span class="icon"></span>
+                     <span class="name">Bookmarks bar - This is a slightly longer name to test wrapping or scrolling</span>
+                     <span class="dots-icon" title="More options"></span>
+                 </div>
+                <ul>
+                    <li id="folder-news" class="folder" data-id="2">
+                        <div class="item-content" tabindex="0">
+                            <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                            <span class="icon"></span>
+                            <span class="name">חדשות</span>
+                            <span class="dots-icon" title="More options"></span>
+                        </div>
+                        <ul></ul>
+                    </li>
+                     <li id="bookmark-google-translate" class="bookmark-item" data-id="5">
+                         <div class="item-content" tabindex="0">
+                             <span class="caret"></span><span class="icon"></span><span class="name">Google Translate - Official Site Link For Translation Services</span>
+                             <!-- No dots icon for bookmarks -->
+                         </div>
+                     </li>
+                     <li id="folder-deep-1" class="folder" data-id="20">
+                        <div class="item-content" tabindex="0">
+                            <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                            <span class="icon"></span>
+                            <span class="name">Level 1 Folder That is Quite Deeply Nested</span>
+                            <span class="dots-icon" title="More options"></span>
+                        </div>
+                        <ul>
+                             <li id="folder-deep-2" class="folder" data-id="21">
+                                <div class="item-content" tabindex="0">
+                                    <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                                    <span class="icon"></span>
+                                    <span class="name">Level 2 Folder Inside Level 1</span>
+                                    <span class="dots-icon" title="More options"></span>
+                                </div>
+                                 <ul>
+                                     <li id="folder-deep-3" class="folder" data-id="22">
+                                        <div class="item-content" tabindex="0">
+                                            <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                                            <span class="icon"></span>
+                                            <span class="name">Level 3 Folder Which Makes The Indentation Very Large</span>
+                                            <span class="dots-icon" title="More options"></span>
+                                        </div>
+                                         <ul>
+                                              <li id="bookmark-deep" class="bookmark-item" data-id="23">
+                                                 <div class="item-content" tabindex="0">
+                                                     <span class="caret"></span><span class="icon"></span><span class="name">Deeply Nested Bookmark Item Example</span>
+                                                 </div>
+                                             </li>
+                                         </ul>
+                                     </li>
+                                 </ul>
+                             </li>
+                        </ul>
+                     </li>
+                    <li id="folder-ai" class="folder" data-id="3">
+                        <div class="item-content" tabindex="0">
+                             <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                             <span class="icon"></span>
+                             <span class="name">AI tools</span>
+                             <span class="dots-icon" title="More options"></span>
+                        </div>
+                        <ul>
+                             <li id="bookmark-ai-tool-1" class="bookmark-item" data-id="6">
+                                 <div class="item-content" tabindex="0">
+                                     <span class="caret"></span><span class="icon"></span><span class="name">Cool AI Tool With A Name That Spans Longer</span>
+                                 </div>
+                             </li>
+                        </ul>
+                    </li>
+                    <li id="folder-quantum" class="folder collapsed" data-id="4">
+                         <div class="item-content" tabindex="0">
+                             <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                             <span class="icon"></span>
+                             <span class="name">Quantum Computing Research Papers and Resources Collection</span>
+                             <span class="dots-icon" title="More options"></span>
+                        </div>
+                        <ul>
+                             <li id="bookmark-quantum-paper" class="bookmark-item" data-id="7">
+                                 <div class="item-content" tabindex="0">
+                                     <span class="caret"></span><span class="icon"></span><span class="name">Introduction To Quantum Mechanics Paper PDF Document Link</span>
+                                 </div>
+                             </li>
+                        </ul>
+                    </li>
+                     <!-- More items for scrolling (unchanged) -->
+                     <li class="bookmark-item" data-id="8"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 1 - Some Extra Text Here</span></div></li>
+                     <li class="bookmark-item" data-id="9"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 2 - And Also Here Too For Width</span></div></li>
+                     <li id="folder-long" class="folder collapsed" data-id="10">
+                        <div class="item-content" tabindex="0">
+                            <span class="caret"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg></span>
+                            <span class="icon"></span>
+                            <span class="name">A Very Very Extremely Long Folder Name That Will Definitely Cause Horizontal Scrolling Issues If Not Handled</span>
+                             <span class="dots-icon" title="More options"></span>
+                         </div>
+                         <ul></ul>
+                     </li>
+                    <li class="bookmark-item" data-id="11"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 3</span></div></li>
+                    <li class="bookmark-item" data-id="12"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 4</span></div></li>
+                     <li class="bookmark-item" data-id="13"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 5</span></div></li>
+                     <li class="bookmark-item" data-id="14"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 6</span></div></li>
+                     <li class="bookmark-item" data-id="15"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 7</span></div></li>
+                     <li class="bookmark-item" data-id="16"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 8</span></div></li>
+                     <li class="bookmark-item" data-id="17"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 9</span></div></li>
+                     <li class="bookmark-item" data-id="18"><div class="item-content" tabindex="0"><span class="caret"></span><span class="icon"></span><span class="name">Test Item 10 - The Final Test Item In This List</span></div></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+</div> <!-- End bookmarks-area wrapper -->
+
+<!-- Context Menu Structure (Hidden) -->
+<div id="context-menu">
+    <button id="ctx-add-folder">Add Folder</button>
+    <button id="ctx-remove">Remove</button>
+    <!-- Add more options here later if needed -->
+</div>
+
+
+<script>
+    const bookmarksArea = document.querySelector('.bookmarks-area'); // Target the main wrapper now
+    const bookmarkContainer = document.querySelector('.bookmark-list-container');
+    const bookmarkList = document.getElementById('bookmark-root');
+    const contextMenu = document.getElementById('context-menu');
+    let nextItemId = 30;
+    let currentDropTarget = null;
+    let currentContextMenuTarget = null; // Track which LI the menu is for
+
+    // --- Basic Click Handler (Select/Expand/Collapse - Adjusted Scope) ---
+    bookmarkContainer.addEventListener('click', function(event) {
+        const itemContent = event.target.closest('.item-content');
+        if (!itemContent) return;
+
+        // Prevent item click if dots icon was clicked
+        if (event.target.classList.contains('dots-icon')) {
+            return;
+        }
+
+        const clickedLi = itemContent.closest('li');
+        if (!clickedLi) return;
+
+        const isCaretClick = event.target.closest('.caret');
+
+        // Check if click was on the menu itself
+        if (contextMenu.contains(event.target)) {
+             return;
+         }
+        hideContextMenu(); // Hide menu on any regular item click
+
+        if (clickedLi.classList.contains('folder') && isCaretClick) {
+            // Handle Expand/Collapse (Unchanged logic)
+            event.stopPropagation();
+            clickedLi.classList.toggle('collapsed');
+            const nestedUl = clickedLi.querySelector(':scope > ul');
+            if (nestedUl) {
+                 nestedUl.style.display = clickedLi.classList.contains('collapsed') ? 'none' : '';
+             }
+        } else {
+            // Handle Selection (Unchanged logic)
+            const currentSelected = bookmarkList.querySelector('li.selected');
+            if (currentSelected && currentSelected !== clickedLi) {
+                currentSelected.classList.remove('selected');
+            }
+            if (!clickedLi.classList.contains('selected')) {
+                 clickedLi.classList.add('selected');
+                 // Optionally bring selected item into view
+                 // clickedLi.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+    });
+
+     // --- Keyboard Navigation (Unchanged logic, ensure container focus works) ---
+     bookmarkContainer.addEventListener('keydown', function(event) {
+         // Make sure the container itself can receive focus for keydown initially
+         // We might need to add tabindex="0" to bookmark-list-container if needed
+         // Or ensure focus lands on an item first.
+
+         const currentFocusedElement = document.activeElement;
+         if (!bookmarkContainer.contains(currentFocusedElement)) return; // Check focus is inside
+
+         const currentItem = currentFocusedElement?.closest('li');
+         if (!currentItem) return;
+
+         hideContextMenu(); // Hide menu on keyboard navigation
+
+         let nextItem = null;
+         let needsFocusUpdate = false;
+
+         switch (event.key) {
+             case 'ArrowDown':
+                 event.preventDefault();
+                 nextItem = findNextVisibleItem(currentItem);
+                 needsFocusUpdate = true;
+                 break;
+             case 'ArrowUp':
+                 event.preventDefault();
+                 nextItem = findPreviousVisibleItem(currentItem);
+                  needsFocusUpdate = true;
+                 break;
+              case 'ArrowRight':
+                   if (currentItem.classList.contains('folder')) {
+                      if (currentItem.classList.contains('collapsed')) {
+                           event.preventDefault();
+                           currentItem.classList.remove('collapsed'); // Expand
+                           const nestedUl = currentItem.querySelector(':scope > ul');
+                           if(nestedUl) nestedUl.style.display = '';
+                      } else {
+                           const firstChild = currentItem.querySelector(':scope > ul > li');
+                           if(firstChild) {
+                               event.preventDefault();
+                               nextItem = firstChild;
+                               needsFocusUpdate = true;
+                           }
+                      }
+                   }
+                  break;
+              case 'ArrowLeft':
+                   if (currentItem.classList.contains('folder') && !currentItem.classList.contains('collapsed')) {
+                       event.preventDefault();
+                       currentItem.classList.add('collapsed'); // Collapse
+                       const nestedUl = currentItem.querySelector(':scope > ul');
+                       if(nestedUl) nestedUl.style.display = 'none';
+                   } else {
+                       const parentFolder = currentItem.parentElement?.closest('li.folder');
+                       if(parentFolder) {
+                           event.preventDefault();
+                           nextItem = parentFolder;
+                           needsFocusUpdate = true;
+                       }
+                   }
+                   break;
+               case 'Enter':
+               case ' ': // Spacebar
+                  event.preventDefault();
+                  currentItem.querySelector('.item-content')?.click(); // Simulate click
+                  break;
+            // Potentially add a key (like Menu key or Shift+F10) to open context menu
+         }
+
+         if (needsFocusUpdate && nextItem) {
+             const nextItemContent = nextItem.querySelector('.item-content');
+             if (nextItemContent) {
+                 nextItemContent.focus();
+                 const currentSelected = bookmarkList.querySelector('li.selected');
+                 if (currentSelected && currentSelected !== nextItem) currentSelected.classList.remove('selected');
+                 if (!nextItem.classList.contains('selected')) nextItem.classList.add('selected');
+             }
+         }
+     });
+     // --- Helper functions findNext/PreviousVisibleItem (Unchanged) ---
+     function findNextVisibleItem(currentItem) {
+         if (currentItem.classList.contains('folder') && !currentItem.classList.contains('collapsed')) {
+             const firstChild = currentItem.querySelector(':scope > ul > li');
+             if (firstChild) return firstChild;
+         }
+         let sibling = currentItem.nextElementSibling;
+         if (sibling) return sibling;
+         let parent = currentItem.parentElement?.closest('li.folder');
+         while (parent) {
+             let uncle = parent.nextElementSibling;
+             if (uncle) return uncle;
+             parent = parent.parentElement?.closest('li.folder');
+         }
+         return null;
+     }
+     function findPreviousVisibleItem(currentItem) {
+         let sibling = currentItem.previousElementSibling;
+         if (sibling) {
+             while (sibling.classList.contains('folder') && !sibling.classList.contains('collapsed')) {
+                  const lastChild = sibling.querySelector(':scope > ul > li:last-child');
+                  if (!lastChild) break;
+                  sibling = lastChild;
+             }
+             return sibling;
+         }
+          const parent = currentItem.parentElement?.closest('li.folder');
+         return parent || null;
+     }
+
+
+    // --- External Drag and Drop Handling (Unchanged logic) ---
+    bookmarkContainer.addEventListener('dragenter', handleDragEnter);
+    bookmarkContainer.addEventListener('dragleave', handleDragLeave);
+    bookmarkContainer.addEventListener('dragover', handleDragOver);
+    bookmarkContainer.addEventListener('drop', handleDrop);
+
+    function handleDragEnter(event) {
+         event.preventDefault();
+         if (event.dataTransfer.types.includes('text/uri-list') || event.dataTransfer.types.includes('text/plain')) {
+             const potentialTargetContent = event.target.closest('li.folder > .item-content');
+             if (potentialTargetContent) {
+                 hideContextMenu(); // Hide menu during drag
+                 if (currentDropTarget && currentDropTarget !== potentialTargetContent) {
+                      currentDropTarget.classList.remove('drop-target-active');
+                 }
+                 potentialTargetContent.classList.add('drop-target-active');
+                 currentDropTarget = potentialTargetContent;
+             } else {
+                  if (currentDropTarget && !event.target.closest('.bookmark-list-container')) {
+                     currentDropTarget.classList.remove('drop-target-active');
+                     currentDropTarget = null;
+                  }
+             }
+         }
+     }
+    function handleDragLeave(event) { /* ... unchanged ... */
+         event.preventDefault();
+         const targetContent = event.target.closest('li.folder > .item-content');
+         const relatedTarget = event.relatedTarget;
+
+         if (targetContent === currentDropTarget) {
+             if (!relatedTarget || !targetContent.contains(relatedTarget)) {
+                 targetContent.classList.remove('drop-target-active');
+                 currentDropTarget = null;
+             }
+         }
+         if (currentDropTarget && !bookmarkContainer.contains(relatedTarget)) {
+             currentDropTarget.classList.remove('drop-target-active');
+             currentDropTarget = null;
+         }
+     }
+    function handleDragOver(event) { /* ... unchanged ... */
+        event.preventDefault();
+         if (currentDropTarget) {
+              event.dataTransfer.dropEffect = 'link';
+         } else {
+              event.dataTransfer.dropEffect = 'none';
+         }
+     }
+    function handleDrop(event) { /* ... unchanged ... */
+         event.preventDefault();
+         const dropTargetContent = currentDropTarget; // Use the tracked target
+
+         if (dropTargetContent) {
+             const dropFolderLi = dropTargetContent.closest('li.folder');
+             dropTargetContent.classList.remove('drop-target-active');
+             currentDropTarget = null;
+
+             let url = event.dataTransfer.getData('text/uri-list');
+             let text = event.dataTransfer.getData('text/plain');
+             if (!url && text && (text.startsWith('http://') || text.startsWith('https://'))) {
+                 url = text;
+             }
+
+             if (url && dropFolderLi) {
+                  const bookmarkName = text && text !== url ? text : extractNameFromUrl(url);
+                  const newBookmarkId = `dropped-${nextItemId++}`;
+                  const newLi = createBookmarkElement(newBookmarkId, bookmarkName, url);
+
+                  let childUl = dropFolderLi.querySelector(':scope > ul');
+                  if (!childUl) {
+                      childUl = document.createElement('ul');
+                       if (dropFolderLi.classList.contains('collapsed')) {
+                           childUl.style.display = 'none';
+                       }
+                      dropFolderLi.appendChild(childUl);
+                  }
+                  childUl.appendChild(newLi);
+
+                  if (dropFolderLi.classList.contains('collapsed')) {
+                      dropFolderLi.classList.remove('collapsed');
+                      if(childUl) childUl.style.display = '';
+                  }
+                  console.log(`Simulated adding bookmark '${bookmarkName}' (${url})`);
+             } else { console.log("Drop occurred but no valid URL found or not on a folder."); }
+         } else { console.log("Dropped, but not on a folder target."); }
+
+          if(currentDropTarget) {
+               currentDropTarget.classList.remove('drop-target-active');
+               currentDropTarget = null;
+          }
+     }
+    function createBookmarkElement(id, name, url) { /* ... unchanged ... */
+        const li = document.createElement('li');
+        li.id = id;
+        li.className = 'bookmark-item';
+        li.dataset.id = id;
+        li.dataset.url = url;
+
+        const itemContent = document.createElement('div');
+        itemContent.className = 'item-content';
+        itemContent.tabIndex = 0;
+
+        const caretSpan = document.createElement('span');
+        caretSpan.className = 'caret'; // Empty caret for alignment
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'icon';
+        iconSpan.style.backgroundImage = 'var(--icon-bookmark)'; // Default bookmark icon
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'name';
+        nameSpan.textContent = name;
+        nameSpan.title = `${name} (${url})`;
+
+        itemContent.appendChild(caretSpan);
+        itemContent.appendChild(iconSpan);
+        itemContent.appendChild(nameSpan);
+        li.appendChild(itemContent);
+
+        return li;
+    }
+    function extractNameFromUrl(url) { /* ... unchanged ... */
+         try {
+            const urlObj = new URL(url);
+            let name = urlObj.pathname;
+            name = decodeURIComponent(name.replace(/^\/+|\/+$/g, ''));
+            if (!name) {
+                 name = urlObj.hostname.replace(/^www\./, '');
+            }
+             name = name.replace(/[\/\-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return name || url;
+        } catch (e) { return url; }
+     }
+
+    // --- Context Menu Handling ---
+    function showContextMenu(targetLi, event) {
+        currentContextMenuTarget = targetLi; // Store the target LI
+        contextMenu.style.display = 'block';
+
+        // Position the menu near the click event coordinates
+        // Adjust as needed for better positioning relative to the dots icon
+        const menuWidth = contextMenu.offsetWidth;
+        const menuHeight = contextMenu.offsetHeight;
+        const vpWidth = window.innerWidth;
+        const vpHeight = window.innerHeight;
+
+        let top = event.pageY;
+        let left = event.pageX;
+
+        // Prevent menu going off-screen
+        if (left + menuWidth > vpWidth) {
+            left = vpWidth - menuWidth - 5; // Adjust with some padding
+        }
+         if (top + menuHeight > vpHeight) {
+             top = vpHeight - menuHeight - 5; // Adjust with some padding
+        }
+
+        contextMenu.style.top = `${top}px`;
+        contextMenu.style.left = `${left}px`;
+
+        // Add listener to close menu when clicking outside
+        // Use setTimeout to avoid immediate closing due to the same click event
+        setTimeout(() => {
+             document.addEventListener('click', handleClickOutsideMenu, { capture: true, once: true });
+             document.addEventListener('contextmenu', handleRightClickOutsideMenu, { capture: true, once: true }); // Also close on right-click outside
+         }, 0);
+    }
+
+    function hideContextMenu() {
+        contextMenu.style.display = 'none';
+        currentContextMenuTarget = null;
+        // Remove listeners if they haven't been removed already (though 'once' should handle it)
+        document.removeEventListener('click', handleClickOutsideMenu, { capture: true });
+        document.removeEventListener('contextmenu', handleRightClickOutsideMenu, { capture: true });
+    }
+
+    function handleClickOutsideMenu(event) {
+        if (!contextMenu.contains(event.target)) {
+            hideContextMenu();
+        } else {
+            // Re-attach listener if click was inside menu, but not on an action button
+            if(!event.target.closest('button')) {
+                document.addEventListener('click', handleClickOutsideMenu, { capture: true, once: true });
+                document.addEventListener('contextmenu', handleRightClickOutsideMenu, { capture: true, once: true });
+            }
+        }
+    }
+     function handleRightClickOutsideMenu(event) {
+         // Prevent browser context menu ONLY if clicking outside our custom menu
+         if (!contextMenu.contains(event.target)) {
+             event.preventDefault(); // Prevent browser menu
+             hideContextMenu();
+         } else {
+              // Allow browser context menu if right-clicking inside our menu
+              // Re-attach listener
+             document.addEventListener('click', handleClickOutsideMenu, { capture: true, once: true });
+             document.addEventListener('contextmenu', handleRightClickOutsideMenu, { capture: true, once: true });
+         }
+     }
+
+    // Listener for the dots icon clicks (delegated)
+    bookmarkContainer.addEventListener('click', function(event) {
+        const dotsIcon = event.target.closest('.dots-icon');
+        if (dotsIcon) {
+             event.stopPropagation(); // Prevent item selection/click
+             const targetLi = dotsIcon.closest('li.folder');
+             if (targetLi) {
+                 showContextMenu(targetLi, event);
+             }
+         }
+    });
+
+    // Prevent default context menu on the dots icon itself
+    bookmarkContainer.addEventListener('contextmenu', function(event) {
+        if (event.target.closest('.dots-icon')) {
+            event.preventDefault();
+            // Optionally show our custom menu on right-click too
+            // const targetLi = event.target.closest('li.folder');
+            // if (targetLi) showContextMenu(targetLi, event);
+        }
+    });
+
+
+    // --- Context Menu Actions ---
+    contextMenu.addEventListener('click', function(event) {
+        const button = event.target.closest('button');
+        if (!button || !currentContextMenuTarget) {
+             // Click was not on a button or target is lost, maybe hide?
+             // hideContextMenu(); // Decided against this to allow clicking blank space in menu
+             return;
+         }
+
+        const targetFolderLi = currentContextMenuTarget;
+        hideContextMenu(); // Hide menu after action is triggered
+
+        switch (button.id) {
+            case 'ctx-add-folder':
+                const folderName = prompt("Enter new folder name:", "New Folder");
+                if (folderName && folderName.trim()) {
+                    const newFolderId = `folder-${nextItemId++}`;
+                    const newFolderLi = createFolderElement(newFolderId, folderName.trim());
+
+                    let childUl = targetFolderLi.querySelector(':scope > ul');
+                    if (!childUl) {
+                        childUl = document.createElement('ul');
+                        // Respect collapsed state when creating UL
+                        if (targetFolderLi.classList.contains('collapsed')) {
+                            childUl.style.display = 'none';
+                        }
+                        targetFolderLi.appendChild(childUl);
+                    }
+                    childUl.appendChild(newFolderLi);
+
+                    // Ensure parent is expanded to show the new folder
+                    if (targetFolderLi.classList.contains('collapsed')) {
+                         targetFolderLi.classList.remove('collapsed');
+                         if(childUl) childUl.style.display = '';
+                     }
+                     // Optional: focus the new folder
+                     newFolderLi.querySelector('.item-content')?.focus();
+                     console.log(`Added folder '${folderName}' inside '${targetFolderLi.id}'`);
+                }
+                break;
+
+            case 'ctx-remove':
+                if (confirm(`Are you sure you want to remove the folder "${targetFolderLi.querySelector('.name').textContent}" and all its contents?`)) {
+                    const parentUl = targetFolderLi.parentNode;
+                    console.log(`Removing folder '${targetFolderLi.id}'`);
+                    targetFolderLi.remove();
+                    // Optional: If parent UL becomes empty, maybe remove it? (Depends on desired behavior)
+                    // if (parentUl && parentUl !== bookmarkList && parentUl.children.length === 0) {
+                    //     // Maybe remove the UL? Or leave it? For simplicity, leave it.
+                    // }
+                     // Optional: Move focus after removal (e.g., to parent or previous sibling)
+                     // (Requires more complex logic similar to keyboard nav)
+                 }
+                break;
+        }
+    });
+
+    // Helper to create a Folder LI element (similar to bookmark)
+    function createFolderElement(id, name) {
+        const li = document.createElement('li');
+        li.id = id;
+        li.className = 'folder collapsed'; // Start collapsed
+        li.dataset.id = id;
+
+        const itemContent = document.createElement('div');
+        itemContent.className = 'item-content';
+        itemContent.tabIndex = 0;
+
+        const caretSpan = document.createElement('span');
+        caretSpan.className = 'caret';
+        caretSpan.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"></path></svg>';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'icon'; // Style will apply default folder icon
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'name';
+        nameSpan.textContent = name;
+        nameSpan.title = name; // Tooltip
+
+        const dotsSpan = document.createElement('span');
+        dotsSpan.className = 'dots-icon';
+        dotsSpan.title = 'More options';
+
+        itemContent.appendChild(caretSpan);
+        itemContent.appendChild(iconSpan);
+        itemContent.appendChild(nameSpan);
+        itemContent.appendChild(dotsSpan); // Add dots to new folders too
+        li.appendChild(itemContent);
+
+        // Add an empty UL, initially hidden because it's collapsed
+        const childUl = document.createElement('ul');
+        childUl.style.display = 'none';
+        li.appendChild(childUl);
+
+
+        return li;
+    }
+
+    // Initial setup: Ensure initial collapsed folders have their ULs hidden
+    document.querySelectorAll('.folder.collapsed > ul').forEach(ul => ul.style.display = 'none');
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes Application</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 10px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .language-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .lang-btn {
+            padding: 5px 10px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .lang-btn:hover {
+            background-color: #f0f0f0;
+        }
+        .notes-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .note {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 10px; /* More rounded corners */
+            background-color: #f9f9f9;
+            display: flex;
+            align-items: center;
+        }
+        .note input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        .note-content {
+            flex-grow: 1;
+        }
+        .note-text {
+            margin-bottom: 5px;
+        }
+        .note-timestamp {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .note-actions button {
+            background: none;
+            border: none;
+            color: #0079d3;
+            cursor: pointer;
+            margin-right: 10px;
+            padding: 0;
+        }
+        .note-actions button:hover {
+            text-decoration: underline;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        .note-input {
+            flex-grow: 1;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .add-note-btn {
+            padding: 5px 10px;
+            background-color: #0079d3;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .add-note-btn:hover {
+            background-color: #005bb5;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .delete-selected-btn {
+            display: none; /* Hidden by default */
+            padding: 5px 10px;
+            background-color: #ff4500;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .delete-selected-btn:hover {
+            background-color: #d13800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="task-title"></h1>
+            <div class="language-selector">
+                <button class="lang-btn" data-lang="en">English</button>
+                <button class="lang-btn" data-lang="he">עברית</button>
+            </div>
+        </header>
+        <button class="delete-selected-btn"><i class="fas fa-trash"></i> Delete Selected</button>
+        <div class="notes-container"></div>
+        <div class="input-area">
+            <input type="text" class="note-input" placeholder="" dir="auto">
+            <button class="add-note-btn"><i class="fas fa-plus"></i> Add Note</button>
+        </div>
+    </div>
+
+    <script>
+        // Translations for English and Hebrew
+        const translations = {
+            en: {
+                taskTitle: "Notes for Building a Table for the Office",
+                addNote: "Add Note",
+                edit: "Edit",
+                delete: "Delete",
+                save: "Save",
+                placeholder: "Write a note...",
+                deleteSelected: "Delete Selected"
+            },
+            he: {
+                taskTitle: "הערות לבניית שולחן למשרד",
+                addNote: "הוסף הערה",
+                edit: "ערוך",
+                delete: "מחק",
+                save: "שמור",
+                placeholder: "כתוב הערה...",
+                deleteSelected: "מחק נבחרים"
+            }
+        };
+
+        // DOM elements
+        const taskTitle = document.querySelector('.task-title');
+        const noteInput = document.querySelector('.note-input');
+        const addNoteBtn = document.querySelector('.add-note-btn');
+        const notesContainer = document.querySelector('.notes-container');
+        const langBtns = document.querySelectorAll('.lang-btn');
+        const deleteSelectedBtn = document.querySelector('.delete-selected-btn');
+
+        // Initialize language and direction
+        let currentLang = localStorage.getItem('lang') || 'en';
+        document.body.dir = currentLang === 'he' ? 'rtl' : 'ltr';
+        updateStaticTexts();
+
+        // Load notes and nextId from localStorage
+        let notes = JSON.parse(localStorage.getItem('notes')) || [];
+        let nextId = parseInt(localStorage.getItem('nextId')) || 1;
+
+        // Display existing notes, sorted by timestamp descending (newest first)
+        notes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        notes.forEach(note => notesContainer.appendChild(createNoteElement(note)));
+
+        // Format timestamp based on language
+        function formatTimestamp(timestamp, lang) {
+            const date = new Date(timestamp);
+            const options = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-US', options).format(date);
+        }
+
+        // Create a note element with checkbox
+        function createNoteElement(note) {
+            const noteDiv = document.createElement('div');
+            noteDiv.classList.add('note');
+            noteDiv.setAttribute('data-id', note.id);
+            noteDiv.innerHTML = `
+                <input type="checkbox" class="note-checkbox">
+                <div class="note-content">
+                    <div class="note-text" dir="auto">${note.text}</div>
+                    <div class="note-timestamp" data-timestamp="${note.timestamp}">
+                        ${formatTimestamp(note.timestamp, currentLang)}
+                    </div>
+                    <div class="note-actions">
+                        <button class="edit-btn"><i class="fas fa-edit"></i> ${translations[currentLang].edit}</button>
+                        <button class="delete-btn"><i class="fas fa-trash"></i> ${translations[currentLang].delete}</button>
+                    </div>
+                </div>
+            `;
+            return noteDiv;
+        }
+
+        // Update all static texts and notes based on current language
+        function updateStaticTexts() {
+            taskTitle.textContent = translations[currentLang].taskTitle;
+            addNoteBtn.innerHTML = `<i class="fas fa-plus"></i> ${translations[currentLang].addNote}`;
+            noteInput.placeholder = translations[currentLang].placeholder;
+            deleteSelectedBtn.innerHTML = `<i class="fas fa-trash"></i> ${translations[currentLang].deleteSelected}`;
+            updateNotesLanguage();
+        }
+
+        // Update language-specific elements in existing notes
+        function updateNotesLanguage() {
+            document.querySelectorAll('.note').forEach(noteEl => {
+                const id = parseInt(noteEl.getAttribute('data-id'));
+                const note = notes.find(n => n.id === id);
+                if (note) {
+                    const timestampEl = noteEl.querySelector('.note-timestamp');
+                    timestampEl.textContent = formatTimestamp(note.timestamp, currentLang);
+                    const editBtn = noteEl.querySelector('.edit-btn');
+                    if (editBtn) {
+                        editBtn.innerHTML = `<i class="fas fa-edit"></i> ${translations[currentLang].edit}`;
+                    }
+                    const deleteBtn = noteEl.querySelector('.delete-btn');
+                    if (deleteBtn) {
+                        deleteBtn.innerHTML = `<i class="fas fa-trash"></i> ${translations[currentLang].delete}`;
+                    }
+                    const saveBtn = noteEl.querySelector('.save-btn');
+                    if (saveBtn) {
+                        saveBtn.innerHTML = `<i class="fas fa-check"></i> ${translations[currentLang].save}`;
+                    }
+                }
+            });
+        }
+
+        // Save notes and nextId to localStorage
+        function saveNotes() {
+            localStorage.setItem('notes', JSON.stringify(notes));
+            localStorage.setItem('nextId', nextId);
+        }
+
+        // Add a new note at the top
+        addNoteBtn.addEventListener('click', () => {
+            const text = noteInput.value.trim();
+            if (text) {
+                const note = {
+                    id: nextId++,
+                    text: text,
+                    timestamp: new Date().toISOString()
+                };
+                notes.push(note);
+                saveNotes();
+                const noteEl = createNoteElement(note);
+                notesContainer.prepend(noteEl); // Add new note at the top
+                noteInput.value = '';
+                noteInput.focus();
+            }
+        });
+
+        // Handle note actions (edit, delete, save)
+        notesContainer.addEventListener('click', (e) => {
+            const noteEl = e.target.closest('.note');
+            if (!noteEl) return;
+            const id = parseInt(noteEl.getAttribute('data-id'));
+
+            if (e.target.classList.contains('delete-btn')) {
+                notes = notes.filter(note => note.id !== id);
+                saveNotes();
+                noteEl.remove();
+                updateDeleteSelectedButton();
+            } else if (e.target.classList.contains('edit-btn')) {
+                const note = notes.find(note => note.id === id);
+                const textEl = noteEl.querySelector('.note-text');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = note.text;
+                input.classList.add('edit-input');
+                input.setAttribute('dir', 'auto');
+                textEl.replaceWith(input);
+                const editBtn = e.target;
+                editBtn.innerHTML = `<i class="fas fa-check"></i> ${translations[currentLang].save}`;
+                editBtn.classList.remove('edit-btn');
+                editBtn.classList.add('save-btn');
+                input.focus();
+            } else if (e.target.classList.contains('save-btn')) {
+                const input = noteEl.querySelector('.edit-input');
+                const newText = input.value.trim();
+                if (newText) {
+                    const note = notes.find(note => note.id === id);
+                    note.text = newText;
+                    saveNotes();
+                    const textEl = document.createElement('div');
+                    textEl.classList.add('note-text');
+                    textEl.setAttribute('dir', 'auto');
+                    textEl.textContent = newText;
+                    input.replaceWith(textEl);
+                    const saveBtn = e.target;
+                    saveBtn.innerHTML = `<i class="fas fa-edit"></i> ${translations[currentLang].edit}`;
+                    saveBtn.classList.remove('save-btn');
+                    saveBtn.classList.add('edit-btn');
+                }
+            }
+        });
+
+        // Track selected notes
+        let selectedNotes = new Set();
+
+        notesContainer.addEventListener('change', (e) => {
+            if (e.target.classList.contains('note-checkbox')) {
+                const noteEl = e.target.closest('.note');
+                const id = parseInt(noteEl.getAttribute('data-id'));
+                if (e.target.checked) {
+                    selectedNotes.add(id);
+                } else {
+                    selectedNotes.delete(id);
+                }
+                updateDeleteSelectedButton();
+            }
+        });
+
+        // Delete selected notes
+        deleteSelectedBtn.addEventListener('click', () => {
+            notes = notes.filter(note => !selectedNotes.has(note.id));
+            saveNotes();
+            selectedNotes.forEach(id => {
+                const noteEl = notesContainer.querySelector(`.note[data-id="${id}"]`);
+                if (noteEl) noteEl.remove();
+            });
+            selectedNotes.clear();
+            updateDeleteSelectedButton();
+        });
+
+        // Show/hide "Delete Selected" button
+        function updateDeleteSelectedButton() {
+            deleteSelectedBtn.style.display = selectedNotes.size > 0 ? 'block' : 'none';
+        }
+
+        // Language selection
+        langBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentLang = btn.getAttribute('data-lang');
+                localStorage.setItem('lang', currentLang);
+                document.body.dir = currentLang === 'he' ? 'rtl' : 'ltr';
+                updateStaticTexts();
+            });
+        });
+
+        // Add note with Enter key
+        noteInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addNoteBtn.click();
+        });
+    </script>
+</body>
+</html>
